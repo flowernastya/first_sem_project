@@ -4,7 +4,16 @@
 #include <ctime>
 #include <iomanip>
 
-class Treap{
+class Container{
+public:
+    virtual void insert(long long value) = 0;
+    virtual bool exists(long long value) = 0;
+    virtual void remove(long long value) = 0;
+    virtual void print() = 0;
+    virtual ~Container() { };
+};
+
+class Treap: public Container {
     long long rand_L(){
       //  std::srand(std::time(nullptr));
         long long rz = rand();
@@ -96,6 +105,16 @@ class Treap{
         left = merge(l, ans);
         treap = merge(left, right);
     }
+    void remove_from_tree(Tree* &treap, long long key){
+      //  Tree* left = nullptr;
+        Tree* right = nullptr;
+        Tree* l = nullptr;
+        Tree* ans = nullptr;
+        split(treap, key, l, right);
+        split(l, key - 1, l, ans);
+        delete ans;
+        treap = merge(l, right);
+    }
     long long sum(Tree* &treap, long long left_key, long long right_key){
         Tree* left = nullptr;
         Tree* l = nullptr;
@@ -117,81 +136,63 @@ class Treap{
         delete_my_tree(treap -> right);
         delete treap;
     }
+    void print_tree(Tree* &treap){
+        if(!treap)
+            return;
+        print_tree(treap -> left);
+        print_tree(treap ->right);
+        std::cout << treap -> key << ' ';
+    }
     Tree* root;
+    bool p;
 public:
-    Treap(): root(nullptr){}
+    Treap(): root(nullptr) {}
     Treap(long long value){
         root = new_tree(value);
     }
-    void add(long long value){
+    void insert(long long value){
         add_in_tree(root, value);
     }
-    bool check(long long value){
+    bool exists(long long value){
         return check_in_tree(root, value);
+    }
+    void remove(long long value){
+        return remove_from_tree(root, value);
+    }
+    void print(){
+        print_tree(root);
+        std::cout << std::endl;
     }
     ~Treap(){
         delete_my_tree(root);
     }
 };
 
-
-
-    void build_treap(Treap &treap, int n){
-        for(int i = 0; i < n; i++){
-            long long x;
-            std::cin >> x;
-            treap.add(x);
-        }
-    }
-    long long find(Treap &treap, int m){
-        int start_time, end_time;
-        long long time(0);
-        long long value;
-        for(int j = 0; j < m / 2; ++j){
-            std::cin >> value;
-            start_time = std::clock();
-            bool flag = treap.check(value);
-            end_time = std::clock();
-            time += end_time - start_time;
-        }
-        return time;
-    }
-    long long insert(Treap  &treap, int m){
-        int start_time, end_time;
-        long long value, time(0);
-        for(int j = 0; j < m / 2; ++j){
-            std::cin >> value;
-            start_time = std::clock();
-            treap.add(value);
-            end_time = std::clock();
-            time += end_time - start_time;
-        }
-        return time;
-    }
 int main()
 {
-   freopen("keke.in", "r", stdin);
-  //  freopen("sum.out", "w", stdout);
-    long long n, m;
-    std::cout << std::fixed << std::setprecision(10);
-    for(int i = 0; i < 5; ++i){
-        Treap treap;
-        std::cin >> n;
-        std::cout << n << std::endl;
-        build_treap(treap, n);
-        std::cin >> m;
-        long long time =find(treap, m);
-        long double number = m / 2;
-        long double t = time;
-        t /= number * CLOCKS_PER_SEC;
-        std::cout << "search time: " << t << std::endl;
-        time = insert(treap, m);
-        t = time;
-        t /=  number * CLOCKS_PER_SEC;
-        std::cout << "insert time: " << t << std::endl;
-    }
+  // freopen("keke.in", "r", stdin);
+    //freopen("sum.out", "w", stdout);
+    Container* c = new Treap;
 
-   // std::cout << sum(s, std::min(a, b), std::max(a, b));
+    for(int i = 1; i < 10; i++)
+        c->insert(i*i);
+
+    std::cout << "Container after creation:" << std::endl;
+    c->print();
+
+    if(c->exists(25))
+        std::cout << "Search for value 25: found" << std::endl;
+
+    if(!c->exists(111))
+        std::cout << "Search for value 111: not found" << std::endl;
+
+    c->remove(25);
+    std::cout << "Container after deletion of the element:" << std::endl;
+    c->print();
+
+    delete c;
+
+    //std::cout << sum(s, std::min(a, b), std::max(a, b));
 
     return 0;
 }
