@@ -1,198 +1,348 @@
 #include <iostream>
-#include <cstdlib>
-#include <stdio.h>
-#include <ctime>
-#include <iomanip>
+#include <vector>
+#include <algorithm>
+#include <stdexcept>
+#include <iterator>
+#include <functional>
+#include "Container.hpp"
+#include "Forward_list.hpp"
 
-class Container{
-public:
-    virtual void insert(long long value) = 0;
-    virtual bool exists(long long value) = 0;
-    virtual void remove(long long value) = 0;
-    virtual void print() = 0;
-    virtual ~Container() { };
-};
 
-class Treap: public Container {
-    long long rand_L(){
-      //  std::srand(std::time(nullptr));
-        long long rz = rand();
-        for(int i = 0; i < 3; i++){
-            rz = rz << 16;
-            rz += rand();
-        }
-        return rz;
-    }
-    struct Tree{
-        long long key, priority, sum;
-        Tree *left, *right;
+using namespace std;
+#define IMPL Forward_list
 
-    };
-    Tree* new_tree(long long value){
-        Tree *tree = new Tree;
-        tree -> key = value;
-        tree -> sum = value;
-        tree -> priority = rand_L();
-        tree -> left = nullptr;
-        tree -> right = nullptr;
-        return tree;
+bool test1()
+{
+    int size = 10;
+    Container<int>* impl = new IMPL<int>();
+    bool test_ok = true;
+
+    for(int i = 0; i < size; i++) {
+        impl->insert(i * i);
     }
-    void update(Tree * tree){
-        if(!tree)
-            return;
-        tree -> sum = tree -> key;
-        if(tree -> left)
-            tree -> sum += tree -> left -> sum;
-        if(tree -> right)
-            tree -> sum += tree -> right -> sum;
-    }
-    void split(Tree *tree, long long key, Tree* &left, Tree* &right){
-        if(!tree){
-            left = right = nullptr;
-            return;
+
+    for(int i = 0; i < size; i++) {
+        if (!impl->exists(i * i)) {
+            test_ok = false;
         }
-        if(tree -> key <= key){
-            left = tree;
-            split(left -> right, key, left -> right, right);
-            update(left);
-        }
-        else{
-            right = tree;
-            split(right -> left, key, left, right -> left);
-            update(right);
+        impl->remove(i * i);
+        if (impl->exists(i * i)) {
+            test_ok = false;
         }
     }
-    Tree * merge( Tree* left, Tree* right){
-        if(!left)
-            return right;
-        if(!right)
-            return left;
-        if(left -> priority > right -> priority){
-            left -> right = merge(left -> right, right);
-            update(left);
-            return left;
+
+    delete impl;
+
+    cout << boolalpha << "Container<int> basic API works: " << test_ok << endl;
+    return test_ok;
+}
+
+bool test2()
+{
+    int size = 10;
+    Container<string>* impl = new IMPL<string>();
+    bool test_ok = true;
+
+    for(int i = 0; i < size; i++) {
+        string s = "a";
+        s[0] += i;
+        impl->insert(s);
+    }
+
+    for(int i = 0; i < size; i++) {
+        string s = "a";
+        s[0] += i;
+        if (!impl->exists(s)) {
+            test_ok = false;
         }
-        right -> left = merge(left, right -> left);
-        update(right);
-        return right;
+        impl->remove(s);
+        if (impl->exists(s)) {
+            test_ok = false;
+        }
     }
-    bool check_in_tree(Tree* &treap, long long key){
-        Tree* left = nullptr;
-        Tree* right = nullptr;
-        Tree* l = nullptr;
-        Tree* ans = nullptr;
-        bool check(0);
-        split(treap, key, l, right);
-        split(l, key - 1, l, ans);
-        if(ans)
-            check = 1;
-        left = merge(l, ans);
-        treap = merge(left, right);
-        return check;
+
+    delete impl;
+
+    cout << boolalpha << "Container<string> basic API works: " << test_ok << endl;
+    return test_ok;
+}
+
+bool test3()
+{
+    bool test_ok = true;
+
+    int size = 10;
+    vector<int> reference;
+    vector<int> from_impl;
+
+    IMPL<int> impl;
+    for(int i = 0; i < size; i++) {
+        impl.insert(i);
+        reference.push_back(i);
     }
-    void add_in_tree(Tree* &treap, long long key){
-        Tree* new_element = new_tree(key);
-        Tree* left = nullptr;
-        Tree* right = nullptr;
-        Tree* l = nullptr;
-        Tree* ans = nullptr;
-        split(treap, key, l, right);
-        split(l, key - 1, l, ans);
-        if(!ans)
-            ans = new_element;
-        else
-            delete new_element;
-        left = merge(l, ans);
-        treap = merge(left, right);
+
+    for(const auto& el: impl)
+        from_impl.push_back(el);
+
+    sort(reference.begin(), reference.end());
+    sort(from_impl.begin(), from_impl.end());
+
+    cout << boolalpha << "Iterator provides access to all elements: " << (from_impl == reference) << endl;
+    return test_ok;
+}
+
+bool test4()
+{
+    bool test_ok = true;
+
+    int size = 10;
+    vector<int> from_impl;
+
+    IMPL<int> impl;
+    for(int i = 0; i < size; i++) {
+        impl.insert(i);
     }
-    void remove_from_tree(Tree* &treap, long long key){
-      //  Tree* left = nullptr;
-        Tree* right = nullptr;
-        Tree* l = nullptr;
-        Tree* ans = nullptr;
-        split(treap, key, l, right);
-        split(l, key - 1, l, ans);
-        delete ans;
-        treap = merge(l, right);
+
+    for(int i = 0; i < size; i++) {
+        impl.remove(i);
     }
-    long long sum(Tree* &treap, long long left_key, long long right_key){
-        Tree* left = nullptr;
-        Tree* l = nullptr;
-        Tree* right = nullptr;
-        Tree* ans = nullptr;
-        split(treap, right_key, left, right);
-        split(left, left_key - 1, l, ans);
-        long long answer(0);
-        if(ans)
-            answer = ans -> sum;
-        left = merge(l, ans);
-        treap = merge(left, right);
-        return answer;
+
+    for(const auto& el: impl)
+        from_impl.push_back(el);
+
+    cout << boolalpha << "Method remove() really removes: " << (from_impl.size() == 0) << endl;
+    return test_ok;
+}
+
+bool test5()
+{
+    bool test_ok = true;
+
+    int size = 10;
+
+    IMPL<int> impl;
+    for(int i = 0; i < size; i++) {
+        impl.insert(i);
     }
-    void delete_my_tree(Tree* &treap){
-        if(!treap)
-            return;
-        delete_my_tree(treap -> left);
-        delete_my_tree(treap -> right);
-        delete treap;
+
+    cout << boolalpha << "Looking for non-existing element works: " << (!impl.exists(42)) << endl;
+    return test_ok;
+}
+
+bool test6()
+{
+    bool test_ok = true;
+
+    int size = 10;
+
+    IMPL<int> impl;
+    for(int i = 0; i < size; i++) {
+        impl.insert(i);
     }
-    void print_tree(Tree* &treap){
-        if(!treap)
-            return;
-        print_tree(treap -> left);
-        print_tree(treap ->right);
-        std::cout << treap -> key << ' ';
+    impl.remove(42);
+
+    cout << boolalpha << "Calling remove() for non-existing element does not die: " << (test_ok) << endl;
+    return test_ok;
+}
+
+bool test7()
+{
+    bool test_ok = true;
+
+    IMPL<int> impl;
+    impl.exists(42);
+    impl.remove(42);
+
+    vector<int> from_impl;
+    for(const auto& el: impl)
+        from_impl.push_back(el);
+
+    cout << boolalpha << "Empty container does not die: " << (from_impl.size() == 0) << endl;
+    return test_ok;
+}
+
+bool test8()
+{
+    bool test_ok = true;
+
+    int size = 10;
+    vector<int> reference;
+    vector<int> from_impl;
+
+    IMPL<int> impl;
+    for(int i = 0; i < size; i++) {
+        impl.insert(i);
+        reference.push_back(i);
     }
-    Tree* root;
-    bool p;
-public:
-    Treap(): root(nullptr) {}
-    Treap(long long value){
-        root = new_tree(value);
+
+    int to_delete = int(size / 2);
+    auto position = find(reference.begin(), reference.end(), to_delete);
+    reference.erase(position);
+    impl.remove(to_delete);
+
+    for(const auto& el: impl)
+        from_impl.push_back(el);
+
+    sort(reference.begin(), reference.end());
+    sort(from_impl.begin(), from_impl.end());
+
+    cout << boolalpha << "Elements are still reachable after remove(): " << (from_impl == reference) << endl;
+    return test_ok;
+}
+
+bool test9()
+{
+    bool test_ok = true;
+
+    int size = 10;
+    vector<int> reference;
+    vector<int> from_impl;
+
+    IMPL<int> impl;
+    for(int i = 0; i < size; i++) {
+        impl.insert(i);
+        impl.insert(i);
+        impl.insert(i);
+        reference.push_back(i);
+        reference.push_back(i);
+        reference.push_back(i);
     }
-    void insert(long long value){
-        add_in_tree(root, value);
+
+    for(const auto& el: impl)
+        from_impl.push_back(el);
+
+    sort(reference.begin(), reference.end());
+    sort(from_impl.begin(), from_impl.end());
+
+    cout << boolalpha << "Duplicate values are possible: " << (from_impl == reference) << endl;
+    return test_ok;
+}
+
+bool test10()
+{
+    bool test_ok = true;
+
+    IMPL<int> impl1;
+    impl1.insert(42);
+    impl1.insert(0);
+    impl1.remove(42);
+
+    IMPL<int> impl2;
+    impl2.insert(0);
+    impl2.insert(42);
+    impl2.remove(42);
+
+    test_ok = (impl1.exists(0) && impl2.exists(0));
+
+    cout << boolalpha << "Removing head element probably works: " << (test_ok) << endl;
+    return test_ok;
+}
+
+bool test11()
+{
+    bool test_ok = true;
+
+    IMPL<int> impl1;
+
+    try {
+        int a = *impl1.begin();
+        a++;
+    } catch (const exception& e) {
+        //
     }
-    bool exists(long long value){
-        return check_in_tree(root, value);
+
+    cout << boolalpha << "Dereference corner cases probably handled: " << (test_ok) << endl;
+    return test_ok;
+}
+
+bool test12()
+{
+    bool test_ok = true;
+
+    IMPL<int> impl1;
+
+    try {
+        ++impl1.begin();
+        impl1.begin()++;
+        ++impl1.end();
+        impl1.end()++;
+    } catch (const exception& e) {
+        //
     }
-    void remove(long long value){
-        return remove_from_tree(root, value);
+
+    cout << boolalpha << "Iterator increment corner cases probably handled: " << (test_ok) << endl;
+    return test_ok;
+}
+
+bool test13()
+{
+    bool test_ok = true;
+
+    int size = 10;
+    vector<int> reference;
+    vector<int> from_impl;
+
+    IMPL<int> impl1;
+    for(int i = 0; i < size; i++) {
+        impl1.insert(i);
+        reference.push_back(i);
     }
-    void print(){
-        print_tree(root);
-        std::cout << std::endl;
+
+    IMPL<int> impl2(impl1);
+    IMPL<int> impl3;
+    impl3 = impl2;
+    impl3 = impl3;
+
+    sort(reference.begin(), reference.end());
+
+    from_impl.clear();
+    for(const auto& el: impl2)
+        from_impl.push_back(el);
+    sort(from_impl.begin(), from_impl.end());
+    test_ok = test_ok && (from_impl == reference);
+
+    from_impl.clear();
+    for(const auto& el: impl3)
+        from_impl.push_back(el);
+    sort(from_impl.begin(), from_impl.end());
+    test_ok = test_ok && (from_impl == reference);
+
+    cout << boolalpha << "Copy and assignment probably works: " << (test_ok) << endl;
+    return test_ok;
+}
+
+bool test14()
+{
+    int size = 10;
+
+    IMPL<int> impl;
+    for(int i = 0; i < size; i++) {
+        impl.insert(i);
     }
-    ~Treap(){
-        delete_my_tree(root);
-    }
-};
+
+    int mycount = count_if(impl.begin(), impl.end(), [size](int i) { return i < size; });
+
+    bool test_ok = (mycount == size);
+    cout << boolalpha << "STL algo can be applied: " << test_ok << endl;
+    return test_ok;
+}
 
 int main()
 {
-  // freopen("keke.in", "r", stdin);
-    //freopen("sum.out", "w", stdout);
-    Container* c = new Treap;
+    vector<function<bool(void)>> tests = {test1, test2, test3, test4, test5, test6, test7, test8, test9, test10,
+                                          test11, test12, test13, test14};
 
-    for(int i = 1; i < 10; i++)
-        c->insert(i*i);
+    bool verdict = true;
 
-    std::cout << "Container after creation:" << std::endl;
-    c->print();
+    unsigned int count = 1;
+    for(auto test : tests) {
+        cout << count << ". ";
+        verdict = verdict && test();
+        count++;
+    }
 
-    if(c->exists(25))
-        std::cout << "Search for value 25: found" << std::endl;
-
-    if(!c->exists(111))
-        std::cout << "Search for value 111: not found" << std::endl;
-
-    c->remove(25);
-    std::cout << "Container after deletion of the element:" << std::endl;
-    c->print();
-
-    delete c;
-
-    //std::cout << sum(s, std::min(a, b), std::max(a, b));
+    cout << "=================================" << endl;
+    cout << "Run " << (count - 1) << " tests. Verdict: " << (verdict ? "PASSED" : "FAILED") << endl;
 
     return 0;
 }
